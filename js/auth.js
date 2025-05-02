@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Verificar si hay una sesión activa
-  const usuarioActual = localStorage.getItem('usuario');
-  if (!usuarioActual) {
+  if (localStorage.getItem("accesoPermitido") !== "true" || 
+      sessionStorage.getItem("sesionActiva") !== "true") {
     window.location.href = 'login.html';
     return;
   }
@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // Limpiar datos de sesión
       localStorage.removeItem('usuario');
       localStorage.removeItem('admin_id');
+      
+      // Eliminar los valores de acceso y sesión
+      localStorage.removeItem("accesoPermitido");
+      sessionStorage.removeItem("sesionActiva");
       
       // Redirigir al login
       window.location.href = 'login.html';

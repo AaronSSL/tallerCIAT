@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  // Supabase client (replace with your actual Supabase URL and Key)
+  // Supabase client
   const supabaseUrl = "https://hadrdwcgboyqbpoqyyhg.supabase.co"
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhZHJkd2NnYm95cWJwb3F5eWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNjE0MzEsImV4cCI6MjA2MTYzNzQzMX0.xkey8tSmffYh_jdcbhT9Og1ic2XStnn7HErDFyk-_30"
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -7,8 +7,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tablaTalleres = document.getElementById('talleres-tabla');
   const totalRegistros = document.getElementById('total-registros');
   const buscarTaller = document.getElementById('buscar-taller');
+  const guardarCambiosBtn = document.getElementById('guardar-cambios');
   
   let talleres = [];
+  let editarTallerModal;
+  
+  // Inicializar el modal
+  if (typeof bootstrap !== 'undefined') {
+    editarTallerModal = new bootstrap.Modal(document.getElementById('editarTallerModal'));
+  }
   
   // Función para cargar talleres
   async function cargarTalleres() {
@@ -27,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Error al cargar talleres:', error);
       tablaTalleres.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center text-danger">
+          <td colspan="6" class="text-center text-danger">
             Error al cargar los talleres. Por favor, intente de nuevo.
           </td>
         </tr>
@@ -40,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (talleres.length === 0) {
       tablaTalleres.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center">
+          <td colspan="6" class="text-center">
             No se encontraron talleres registrados.
           </td>
         </tr>
@@ -51,15 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     tablaTalleres.innerHTML = talleres.map(taller => `
       <tr>
-        <td>${taller.id}</td>
+        <!-- Eliminada la celda del ID -->
         <td>${taller.titulo}</td>
         <td>${taller.descripcion.length > 50 ? taller.descripcion.substring(0, 50) + '...' : taller.descripcion}</td>
         <td>${taller.encargado}</td>
         <td>${formatearFecha(taller.fecha)}</td>
         <td>${taller.hora_inicio} - ${taller.horario_fin}</td>
         <td>
-          <button class="btn btn-sm btn-info ver-detalles" data-id="${taller.id}">
-            <i class="bi bi-eye"></i>
+          <button class="btn btn-sm btn-primary editar-taller" data-id="${taller.id}">
+            <i class="bi bi-pencil-fill"></i>
           </button>
           <button class="btn btn-sm btn-danger eliminar-taller" data-id="${taller.id}">
             <i class="bi bi-trash"></i>
@@ -71,8 +78,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     totalRegistros.textContent = talleres.length;
     
     // Agregar event listeners a los botones
-    document.querySelectorAll('.ver-detalles').forEach(btn => {
-      btn.addEventListener('click', () => verDetallesTaller(btn.dataset.id));
+    document.querySelectorAll('.editar-taller').forEach(btn => {
+      btn.addEventListener('click', () => editarTaller(btn.dataset.id));
     });
     
     document.querySelectorAll('.eliminar-taller').forEach(btn => {
@@ -86,20 +93,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     return fecha.toLocaleDateString();
   }
   
-  // Función para ver detalles de un taller
-  async function verDetallesTaller(id) {
+  // Función para editar un taller
+  async function editarTaller(id) {
     const taller = talleres.find(t => t.id == id);
     
     if (taller) {
-      document.getElementById('detalle-titulo').textContent = taller.titulo;
-      document.getElementById('detalle-descripcion').textContent = taller.descripcion;
-      document.getElementById('detalle-encargado').textContent = taller.encargado;
-      document.getElementById('detalle-correo').textContent = taller.correo_encargado;
-      document.getElementById('detalle-fecha').textContent = formatearFecha(taller.fecha);
-      document.getElementById('detalle-horario').textContent = `${taller.hora_inicio} - ${taller.horario_fin}`;
+      // Llenar el formulario con los datos del taller
+      document.getElementById('editar-id').value = taller.id;
+      document.getElementById('editar-titulo').value = taller.titulo;
+      document.getElementById('editar-descripcion').value = taller.descripcion;
+      document.getElementById('editar-encargado').value = taller.encargado;
+      document.getElementById('editar-correo').value = taller.correo_encargado;
+      document.getElementById('editar-fecha').value = taller.fecha;
+      document.getElementById('editar-hora-inicio').value = taller.hora_inicio;
+      document.getElementById('editar-hora-fin').value = taller.horario_fin;
       
-      const modal = new bootstrap.Modal(document.getElementById('detallesTallerModal'));
-      modal.show();
+      // Mostrar el modal
+      if (editarTallerModal) {
+        editarTallerModal.show();
+      } else {
+        // Fallback si bootstrap no está disponible
+        document.getElementById('editarTallerModal').style.display = 'block';
+      }
+    }
+  }
+  
+  // Función para guardar los cambios de un taller
+  async function guardarCambiosTaller() {
+    const id = document.getElementById('editar-id').value;
+    
+    const tallerActualizado = {
+      titulo: document.getElementById('editar-titulo').value,
+      descripcion: document.getElementById('editar-descripcion').value,
+      encargado: document.getElementById('editar-encargado').value,
+      correo_encargado: document.getElementById('editar-correo').value,
+      fecha: document.getElementById('editar-fecha').value,
+      hora_inicio: document.getElementById('editar-hora-inicio').value,
+      horario_fin: document.getElementById('editar-hora-fin').value
+    };
+    
+    try {
+      // Validar que la hora de fin sea posterior a la hora de inicio
+      if (tallerActualizado.hora_inicio >= tallerActualizado.horario_fin) {
+        alert('La hora de finalización debe ser posterior a la hora de inicio.');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('talleres')
+        .update(tallerActualizado)
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Cerrar el modal
+      if (editarTallerModal) {
+        editarTallerModal.hide();
+      } else {
+        // Fallback si bootstrap no está disponible
+        document.getElementById('editarTallerModal').style.display = 'none';
+      }
+      
+      // Recargar talleres
+      cargarTalleres();
+      
+      alert('Taller actualizado correctamente');
+      
+    } catch (error) {
+      console.error('Error al actualizar taller:', error);
+      alert('Error al actualizar el taller. Por favor, intente de nuevo.');
     }
   }
   
@@ -138,6 +200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     mostrarTalleres(talleresFiltrados);
   });
+  
+  // Event listener para guardar cambios
+  if (guardarCambiosBtn) {
+    guardarCambiosBtn.addEventListener('click', guardarCambiosTaller);
+  }
   
   // Cargar talleres al iniciar
   cargarTalleres();
